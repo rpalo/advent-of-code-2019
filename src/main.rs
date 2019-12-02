@@ -1,3 +1,4 @@
+mod intcode;
 mod day2;
 
 fn main() {
