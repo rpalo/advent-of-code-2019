@@ -12,6 +12,8 @@ fn parse_input() -> Vec<usize> {
     cleaned.split(",").map( |c| c.parse().unwrap()).collect()
 }
 
+/// An Intcode Interpreter is a simple virtual machine that uses opcodes
+/// to modify its internal memory
 struct IntcodeInterpreter {
     ints: Vec<usize>,
     ip: usize,
@@ -22,14 +24,18 @@ impl IntcodeInterpreter {
         Self { ints, ip: 0}
     }
 
+    /// Sets a memory address to a value
     pub fn set(&mut self, position: usize, value: usize) {
         self.ints[position] = value;
     }
 
+    /// Reads from a memory address
     pub fn get(&self, position: usize) -> usize {
         self.ints[position]
     }
 
+    /// Runs the program in memory until the stopcode (99) is reached
+    /// (To be refactored and generalized)
     pub fn run(&mut self) {
         while self.ints[self.ip] != 99 {
             let opcode = self.ints[self.ip];
@@ -49,6 +55,9 @@ impl IntcodeInterpreter {
     }
 }
 
+/// Given a desired output, hunts through the possible values of position
+/// 1 and 2 (termed "noun" and "verb") by brute force until the output
+/// is found.
 fn find_output(output: usize, ints: Vec<usize>) -> (usize, usize) {
     for noun in 0..=99 {
         for verb in 0..=99 {
@@ -67,7 +76,7 @@ fn find_output(output: usize, ints: Vec<usize>) -> (usize, usize) {
 
 pub fn run() {
     let ints = parse_input();
-    
+
     println!("Part 1:");
     let mut interpreter = IntcodeInterpreter::new(ints.clone());
     interpreter.set(1, 12);
