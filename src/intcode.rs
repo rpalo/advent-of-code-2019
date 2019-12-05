@@ -1,22 +1,26 @@
+use std::io;
+use std::fs;
+
 /// An Intcode Interpreter is a simple virtual machine that uses opcodes
 /// to modify its internal memory
 pub struct IntcodeInterpreter {
-    memory: Vec<usize>,
+    memory: Vec<isize>,
     ip: usize,
 }
 
 impl IntcodeInterpreter {
-    pub fn new(memory: Vec<usize>) -> Self {
+    pub fn new(memory: Vec<isize>) -> Self {
         Self { memory, ip: 0}
     }
 
     /// Sets a memory address to a value
-    pub fn set(&mut self, position: usize, value: usize) {
+    pub fn set(&mut self, position: usize, value: isize) {
+        //println!("Writing {} to {}", value, position);
         self.memory[position] = value;
     }
 
     /// Reads from a memory address
-    pub fn get(&self, position: usize) -> usize {
+    pub fn get(&self, position: usize) -> isize {
         self.memory[position]
     }
 
@@ -26,8 +30,8 @@ impl IntcodeInterpreter {
     }
 
     /// Get the current instruction
-    pub fn current_instruction(&self) -> usize {
-        self.get(self.ip)
+    pub fn current_instruction(&self) -> isize {
+        self.get(self.ip) % 100
     }
 
     /// Runs the program in memory until the stopcode (99) is reached
@@ -41,16 +45,48 @@ impl IntcodeInterpreter {
             match self.current_instruction() {
                 1 => self.op1(),
                 2 => self.op2(),
+                3 => self.op3(),
+                4 => self.op4(),
+                5 => self.op5(),
+                6 => self.op6(),
+                7 => self.op7(),
+                8 => self.op8(),
                 99 => return,
                 _ => panic!("Unrecognized opcode {}.", self.get(self.ip)),
             };
         }
     }
 
-    /// Get the value at "offset" index after ip
-    fn arg(&self, offset: usize) -> usize {
+    /// Reads a number from STDIN
+    fn read_stdin() -> isize {
+        let mut buffer = String::new();
+        io::stdin().read_line(&mut buffer).expect("STDIN read failed.");
+        buffer.trim().parse::<isize>().unwrap()
+    }
+
+    /// Write a number to STDOUT
+    fn write_stdout(number: isize) {
+        println!("{}", number);
+    }
+
+    /// Process the parameter mode and provide the value given
+    /// as a parameter
+    fn arg(&self, offset: usize) -> isize {
         let new_index = (self.ip + offset) % self.memory.len();
-        self.memory[new_index]
+        let mode = (self.memory[self.ip] / 10isize.pow(1 + offset as u32)) % 2;
+        if mode == 1 {
+            self.memory[new_index]
+        } else if mode == 0 {
+            self.get(self.memory[new_index] as usize)
+        } else {
+            panic!("Unknown parameter mode {}", mode);
+        }
+    }
+
+    /// Returns the address to write output to
+    fn output_address(&self, offset: usize) -> usize {
+        let new_index = (self.ip + offset) % self.memory.len();
+        self.memory[new_index] as usize
     }
 
     /// Steps the IP forward "count" steps, wrapping if needed
@@ -62,22 +98,82 @@ impl IntcodeInterpreter {
     fn op1(&mut self) {
         let in1 = self.arg(1);
         let in2 = self.arg(2);
-        let out = self.arg(3);
+        let out = self.output_address(3);
 
-        self.set(out, self.get(in1) + self.get(in2));
+        self.set(out, in1 + in2);
         
-        self.step(4)
+        self.step(4);
     }
 
     /// Mult [1] * [2], store in [3]
     fn op2(&mut self) {
         let in1 = self.arg(1);
         let in2 = self.arg(2);
-        let out = self.arg(3);
+        let out = self.output_address(3);
 
-        self.set(out, self.get(in1) * self.get(in2));
+        self.set(out, in1 * in2);
 
-        self.step(4)
+        self.step(4);
+    }
+
+    /// Read one value from STDIN and store it in [1]
+    fn op3(&mut self) {
+        let out = self.output_address(1);
+
+        self.set(out, Self::read_stdin());
+
+        self.step(2);
+    }
+
+    /// Read [1] and send it to STDOUT
+    fn op4(&mut self) {
+        Self::write_stdout(self.arg(1));
+
+        self.step(2);
+    }
+
+    /// If [1] != 0, set IP -> [2], else nothing
+    fn op5(&mut self) {
+        if self.arg(1) != 0 {
+            self.ip = self.arg(2) as usize;
+        } else {
+            self.step(3);
+        }
+    }
+
+    /// if [1] == 0, set IP -> [2], else nothing
+    fn op6(&mut self) {
+        if self.arg(1) == 0 {
+            self.ip = self.arg(2) as usize;
+        } else {
+            self.step(3);
+        }
+    }
+
+    /// if [1] < [2], set [3] to 1, else 0
+    fn op7(&mut self) {
+        let out = self.output_address(3);
+
+        if self.arg(1) < self.arg(2) {
+            self.set(out, 1);
+        } else {
+            self.set(out, 0);
+        }
+
+        self.step(4);
+    }
+
+    /// if [1] == [2], set [3] to 1, else 0
+    fn op8(&mut self) {
+        let out = self.output_address(3);
+
+        if self.arg(1) == self.arg(2) {
+            self.set(out, 1);
+        } else {
+            self.set(out, 0);
+        }
+
+        self.step(4);
     }
 }
 

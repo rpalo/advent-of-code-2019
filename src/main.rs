@@ -1,5 +1,6 @@
-mod day3;
+mod intcode;
+mod day5;
 
 fn main() {
-    day3::run();
+    day5::run();
 }
